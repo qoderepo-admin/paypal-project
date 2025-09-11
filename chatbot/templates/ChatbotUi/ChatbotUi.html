@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat-container {
+      width: 400px;
+      height: 600px;
+      background: #fff;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #007bff;
+      color: white;
+      padding: 12px;
+      font-size: 18px;
+      text-align: center;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .message-row {
+      display: flex;
+      align-items: flex-end;
+      margin: 8px 0;
+    }
+    .message {
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 70%;
+      line-height: 1.4;
+    }
+    .user-row {
+      justify-content: flex-end;
+    }
+    .user .message {
+      background: #dcf8c6;
+    }
+    .bot .message {
+      background: #f1f0f0;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin: 0 8px;
+    }
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    .chat-input input {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+    }
+    .chat-input button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+    .chat-input button:hover {
+      background: #0056b3;
+    }
+    .typing-dots {
+      display: inline-block;
+    }
+    .typing-dots span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin: 0 1px;
+      background: #555;
+      border-radius: 50%;
+      animation: bounce 1.3s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); }
+      40% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">🍕 Food Chatbot</div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input">
+      <input type="text" id="user-input" placeholder="Type a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+  async function sendMessage() {
+    const input = document.getElementById("user-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    addMessage("user", message);
+    input.value = "";
+
+    // Add typing indicator
+    const typingId = addTyping();
+
+    try {
+      const response = await fetch("/chatbot/api/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+
+      removeTyping(typingId);
+      typeMessage("bot", data.reply || "Sorry, I didn’t understand that.");
+    } catch (err) {
+      removeTyping(typingId);
+      addMessage("bot", "⚠️ Error connecting to server.");
+    }
+  }
+
+  function addMessage(role, text) {
+    const chatMessages = document.getElementById("chat-messages");
+    const row = document.createElement("div");
+    row.classList.add("message-row", role + "-row");
+
+    const avatar = document.createElement("img");
+    avatar.classList.add("avatar");
+    avatar.src = role === "user" 
+      ? "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+      : "https://cdn-icons-png.flaticon.com/512/4712/4712100.png";
+
+    const msg = document.createElement("div");
+    msg.classList.add("message");
+    msg.textContent = text;
+
+    if (role === "user") {
+      row.appendChild(msg);
+      row.appendChild(avatar);
+    } else {
+      row.appendChild(avatar);
+      row.appendChild(msg);
+    }
+
+    chatMessages.appendChild(row);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return row;
+  }
+
+  function addTyping() {
+    const chatMessages = document.getElementById("chat-messages");
+    const row = document.createElement("div");
+    row.classList.add("message-row", "bot-row");
+
+    const avatar = document.createElement("img");
+    avatar.classList.add("avatar");
+    avatar.src = "https://cdn-icons-png.flaticon.com/512/4712/4712100.png";
+
+    const typing = document.createElement("div");
+    typing.classList.add("message", "typing-dots");
+    typing.innerHTML = "<span></span><span></span><span></span>";
+
+    row.appendChild(avatar);
+    row.appendChild(typing);
+
+    chatMessages.appendChild(row);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return row;
+  }
+
+  function removeTyping(row) {
+    row.remove();
+  }
+
+  function typeMessage(role, text) {
+    const chatMessages = document.getElementById("chat-messages");
+    const row = document.createElement("div");
+    row.classList.add("message-row", role + "-row");
+
+    const avatar = document.createElement("img");
+    avatar.classList.add("avatar");
+    avatar.src = "https://cdn-icons-png.flaticon.com/512/4712/4712100.png";
+
+    const msg = document.createElement("div");
+    msg.classList.add("message");
+
+    row.appendChild(avatar);
+    row.appendChild(msg);
+    chatMessages.appendChild(row);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    let i = 0;
+    const interval = setInterval(() => {
+      msg.textContent = text.slice(0, i++);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      if (i > text.length) clearInterval(interval);
+    }, 40);
+  }
+
+  // Enter key support
+  document.getElementById("user-input").addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
+      sendMessage();
+    }
+  });
+
+  // 🚀 Bot greets user on first load
+  window.onload = function () {
+    typeMessage("bot", "👋 Hi! What would you like to ask today?");
+  };
+</script>
+
+</body>
+</html>

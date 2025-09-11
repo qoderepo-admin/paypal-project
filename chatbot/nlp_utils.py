@@ -3,10 +3,20 @@ import json
 import re
 import logging
 from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key="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") 
+load_dotenv()
+
+open_api_key = os.getenv("OPENAI_API_KEY")
+
+if not open_api_key:
+    raise ValueError("OPENAI_API_KEY not found. Please set it as an environment variable or in a .env file.")
+
+client = OpenAI(api_key=open_api_key) 
 
 def analyze_user_intent(message: str):
     """

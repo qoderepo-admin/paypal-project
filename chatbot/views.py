@@ -5,6 +5,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
+from django.shortcuts import render
 
 from payments.models import ProductPrice
 from payments.paypal_api import PayPalClient
@@ -194,3 +195,11 @@ class ChatbotAPI(View):
         print(f"Reply to user: {reply}")
 
         return JsonResponse({"reply": reply})
+    
+
+class ChatbotUI(View):
+    """Class-based view to render the chatbot frontend page."""
+    template_name = "ChatbotUi/ChatbotUi.html"
+
+    def get(self, request):
+        return render(request, self.template_name)

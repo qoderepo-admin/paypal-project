@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create PayPal Product</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { max-width: 400px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
+        label { font-weight: bold; }
+        input, select, textarea { padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: #0070ba; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005c99; }
+        .success { color: green; font-weight: bold; text-align: center; }
+        .error { color: red; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Create PayPal Product</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        <label for="name">Product Name</label>
+        <input type="text" name="name" id="name" required>
+
+        <label for="description">Description</label>
+        <textarea name="description" id="description"></textarea>
+
+        <label for="type">Type</label>
+        <select name="type" id="type" required>
+            <option value="SERVICE">Service</option>
+            <option value="PHYSICAL">Physical</option>
+            <option value="DIGITAL">Digital</option>
+        </select>
+
+        <button type="submit">Create Product</button>
+    </form>
+
+    {% if response %}
+        {% if response.ok %}
+            <p class="success">✅ Product created successfully!</p>
+            <pre>{{ response.data }}</pre>
+        {% else %}
+            <p class="error">❌ Failed: {{ response.error }}</p>
+            <pre>{{ response.details }}</pre>
+        {% endif %}
+    {% endif %}
+</body>
+</html>

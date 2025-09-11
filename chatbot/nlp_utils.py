@@ -2,11 +2,13 @@
 import json
 import re
 import logging
+import os
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key="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") 
+# Read the key from the environment; keep client construct lazy-friendly
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "")) 
 
 def analyze_user_intent(message: str):
     """

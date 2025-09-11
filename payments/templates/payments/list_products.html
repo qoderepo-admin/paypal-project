@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PayPal Products</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 5px; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>PayPal Products</h1>
+
+    {% if response.ok %}
+        <p class="success">✅ Products fetched successfully</p>
+        <pre>{{ response.data }}</pre>
+    {% else %}
+        <p class="error">❌ Failed to fetch products</p>
+        <p>Error: {{ response.error }}</p>
+        <pre>{{ response.details }}</pre>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Compose v2+ ignores version; removed for clarity
+
+services:
+  backend:
+    build: .
+    command: /bin/bash -c "/opt/venv/bin/python manage.py migrate && /bin/bash /app/start.sh"
+    environment:
+      RUN_TARGET: backend
+      PORT: 8000
+      DEBUG: "true"
+      ALLOWED_HOSTS: "*"
+      CSRF_TRUSTED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  frontend:
+    build: .
+    command: /bin/bash -c "/bin/bash /app/start.sh"
+    environment:
+      RUN_TARGET: frontend
+      PORT: 8080
+      BACKEND_URL: http://backend:8000
+      CHATBOT_API_PATH: /chatbot/api/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    volumes:
+      - .:/app

@@ -1,14 +1,18 @@
 # chatbot_ui.py
 import os
+from dotenv import load_dotenv
 import streamlit as st
 import requests
 
 st.set_page_config(page_title="PayPal Chatbot", page_icon="🤖")
+
+# Load local .env for convenience (does not override real env)
+load_dotenv()
 st.title("💰 Chatbot")
 
 # Backend URL can be overridden for deployments (e.g., Docker/Nginx setups)
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
-CHATBOT_API_PATH = os.getenv("CHATBOT_API_PATH", "/chatbot/api/")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").strip().strip('"').strip("'")
+CHATBOT_API_PATH = os.getenv("CHATBOT_API_PATH", "/chatbot/api/").strip().strip('"').strip("'")
 if not BACKEND_URL.endswith("/"):
     BACKEND_URL += "/"
 if CHATBOT_API_PATH.startswith("/"):
@@ -25,9 +29,11 @@ if st.button("Send") and user_input.strip():
     st.session_state.history.append(("You", user_input))
 
     try:
+        # Send minimal history so backend can infer context for follow-ups
+        history_payload = st.session_state.history[-6:]
         response = requests.post(
             CHATBOT_API,
-            json={"message": user_input.strip()},
+            json={"message": user_input.strip(), "history": history_payload},
             timeout=30
         )
         data = response.json()
@@ -55,4 +61,3 @@ for user_msg, bot_msg in reversed(history_pairs):
     # Then display bot response
     st.markdown(f"<span style='color:green'><strong>{bot_msg[0]}:</strong> {bot_msg[1]}</span>", unsafe_allow_html=True)
     st.markdown("---")  
-

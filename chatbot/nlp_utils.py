@@ -14,10 +14,33 @@ load_dotenv()
 
 open_api_key = os.getenv("OPENAI_API_KEY")
 
+def _strip_quotes(val: str | None) -> str | None:
+    if val is None:
+        return None
+    return val.strip().strip('"').strip("'")
+
+def _normalize_model_name(name: str) -> str:
+    # Replace common Unicode dashes with ASCII '-'
+    if not name:
+        return name
+    dash_chars = "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+    trans = str.maketrans({c: '-' for c in dash_chars})
+    return name.translate(trans).strip()
+
+# Allow selecting the model via env; default to a stronger inexpensive model
+openai_model = _normalize_model_name(_strip_quotes(os.getenv("OPENAI_MODEL", "gpt-4o-mini")) or "gpt-4o-mini")
+
+# Optional: control temperature via env (default 0.0 for deterministic intent)
+_temp_raw = _strip_quotes(os.getenv("OPENAI_TEMPERATURE", "0"))
+try:
+    openai_temperature = float(_temp_raw) if _temp_raw not in (None, "") else 0.0
+except ValueError:
+    openai_temperature = 0.0
+
 if not open_api_key:
     raise ValueError("OPENAI_API_KEY not found. Please set it as an environment variable or in a .env file.")
 
-client = OpenAI(api_key=open_api_key) 
+client = OpenAI(api_key=_strip_quotes(open_api_key) if open_api_key else None)
 
 
 def analyze_user_intent(message: str):
@@ -25,10 +48,11 @@ def analyze_user_intent(message: str):
     Analyze user message using OpenAI GPT to extract intent, product names, and category.
     Returns JSON like:
     {
-      "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "other",
+      "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "suggest" or "other",
       "product_name": "<name or null>",
       "product_names": ["<name1>", "<name2>"] or null (for comparisons),
-      "category": "<category like pizza, burger, etc. or null>"
+      "category": "<category like pizza, burger, etc. or null>",
+      "search_terms": ["token1", "token2", ...]  // generic keywords to filter product names
     }
     """
     prompt = f"""
@@ -37,10 +61,11 @@ def analyze_user_intent(message: str):
     
     Respond ONLY in JSON format like:
     {{
-        "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "other",
+        "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "suggest" or "other",
         "product_name": "<name or null>",
         "product_names": null,
-        "category": "<category or null>"
+        "category": "<category or null>",
+        "search_terms": ["token1", "token2"]
     }}
     
     Intent guidelines:
@@ -48,6 +73,7 @@ def analyze_user_intent(message: str):
     - "list_products": user wants to see all products/list/catalog
     - "pizza_types": user asks about different types of pizza, pizza varieties, or pizza menu
     - "product_info": user asks for information/description/details about a specific product
+    - "suggest": user asks for recommendations or other options (e.g., "what else do you suggest", "recommend something")
     - "other": any other request
     
     Product name guidelines:
@@ -57,43 +83,47 @@ def analyze_user_intent(message: str):
     - For general queries like "pizza" or "pizzas", set product_name to "pizza"
     
     Category guidelines:
-    - Identify the food category (pizza, burger, drink, etc.)
-    - Return null if no food category is mentioned
-    - Common categories: pizza, burger, sandwich, drink, dessert, etc.
+    - Identify the food category (e.g., pizza, burger, drink, dessert) when the user mentions one
+    - Return null if no category is mentioned
+
+    Search terms:
+    - Always provide a short list (3-8) of generic, lowercase keywords that would appear in product names
+    - Include singular/plural and common synonyms; e.g., for dessert include: dessert, brownie, cheesecake, pie, sundae, cake, ice cream
+    - For burgers include: burger, cheeseburger, beef, patty
+    - For burritos include: burrito, burito
+    - For pizza include: pizza
     
     Examples:
-    - "what pizzas do you have" → intent: "pizza_types", product_name: null, product_names: null, category: "pizza"
-    - "price of margherita pizza" → intent: "price_query", product_name: "margherita pizza", product_names: null, category: "pizza"
-    - "tell me about supreme pizza" → intent: "product_info", product_name: "supreme pizza", product_names: null, category: "pizza"
+    - "what pizzas do you have" → intent: "pizza_types", product_name: null, product_names: null, category: "pizza", search_terms:["pizza"]
+    - "price of margherita pizza" → intent: "price_query", product_name: "margherita pizza", product_names: null, category: "pizza", search_terms:["margherita","pizza"]
+    - "view dessert items" → intent: "list_products", product_name: null, product_names: null, category: "dessert", search_terms:["dessert","brownie","cheesecake","pie","sundae","cake","ice cream"]
+    - "what else do you suggest" → intent: "suggest", product_name: null, product_names: null, category: null, search_terms:[]
     """
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=openai_model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that extracts intent, product names, and categories from user messages. Always respond in valid JSON format."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=300,
-            temperature=0
+            temperature=openai_temperature
         )
 
         output_text = response.choices[0].message.content.strip()
         logger.debug(f"NLP raw output: {output_text}")
         print(f"NLP raw output: {output_text}")
 
-        # Remove ```json or ``` wrapping if present
         cleaned_text = re.sub(r"^```json\s*|```\s*$", "", output_text, flags=re.MULTILINE).strip()
         logger.debug(f"NLP cleaned output: {cleaned_text}")
-
         return json.loads(cleaned_text)
     except json.JSONDecodeError as e:
         logger.error("JSON decode error in NLP: %s", e)
         print("JSON decode error in NLP:", e)
-        # Fallback logic
         return fallback_intent_analysis(message)
     except Exception as e:
-        logger.error("Error in NLP: %s", e)
+        logger.error("Error calling model '%s': %s", openai_model, e)
         print("Error in NLP:", e)
         return fallback_intent_analysis(message)
 
@@ -156,13 +186,80 @@ def fallback_intent_analysis(message: str):
             "category": "pizza"
         }
     
-    # Check for general list requests
-    if any(word in message_lower for word in ['list', 'show all', 'all products', 'catalog', 'menu']):
+    # Check for general list requests (broader synonyms)
+    list_triggers = [
+        'list', 'show all', 'all products', 'catalog', 'menu',
+        'options', 'choices', 'what are the options', 'what options', 'what are my options',
+        'do you have', 'what do you have', 'what can i get',
+        'view all', 'view items', 'view all items', 'see all', 'see items', 'see menu',
+        'browse menu', 'browse items', 'what is available', "what's available", 'available items',
+        'all items', 'everything you have', 'everything', 'show me all'
+    ]
+    if any(word in message_lower for word in list_triggers):
+        # Infer category from the message if possible
+        cat = None
+        if 'pizza' in message_lower:
+            cat = 'pizza'
+        elif 'burrito' in message_lower or 'burito' in message_lower:
+            cat = 'burrito'
+        elif 'burger' in message_lower or 'cheeseburger' in message_lower:
+            cat = 'burger'
+        elif 'sandwich' in message_lower or 'hoagie' in message_lower:
+            cat = 'sandwich'
+        elif 'salad' in message_lower or 'caesar' in message_lower:
+            cat = 'salad'
+        elif 'fries' in message_lower or 'onion rings' in message_lower or 'side' in message_lower:
+            cat = 'side'
+        elif any(k in message_lower for k in ['drink', 'soda', 'lemonade', 'milkshake', 'iced tea']):
+            cat = 'drink'
+        elif any(k in message_lower for k in ['dessert', 'brownie', 'cheesecake', 'pie']):
+            cat = 'dessert'
         return {
             "intent": "list_products", 
             "product_name": None, 
             "product_names": None,
-            "category": None
+            "category": cat
+        }
+
+    # Single-word or short-category fallback (e.g., "burrito", "dessert")
+    # Helps when the model isn't available or returns "other" for terse inputs
+    tokens = re.findall(r"[a-zA-Z]+", message_lower)
+    if 1 <= len(tokens) <= 3:
+        cat_map = {
+            'pizza': ('pizza', ['pizza']),
+            'burrito': ('burrito', ['burrito','burito']),
+            'burito': ('burrito', ['burrito','burito']),
+            'burger': ('burger', ['burger','cheeseburger']),
+            'sandwich': ('sandwich', ['sandwich','hoagie']),
+            'salad': ('salad', ['salad','caesar']),
+            'fries': ('side', ['fries','onion rings','side']),
+            'side': ('side', ['side','fries','onion rings']),
+            'drink': ('drink', ['drink','soda','lemonade','milkshake','tea']),
+            'dessert': ('dessert', ['dessert','brownie','cheesecake','pie','sundae','cake','ice cream']),
+        }
+        for t in tokens:
+            if t in cat_map:
+                cat, terms = cat_map[t]
+                return {
+                    "intent": "list_products",
+                    "product_name": None,
+                    "product_names": None,
+                    "category": cat,
+                    "search_terms": terms,
+                }
+
+    # Suggestions / recommendations
+    suggest_triggers = [
+        'suggest', 'recommend', 'what else', 'anything else', 'something else',
+        'other options', 'other items', 'more options', 'what more', 'what others'
+    ]
+    if any(word in message_lower for word in suggest_triggers):
+        # Keep it generic; the view will use conversation context/history
+        return {
+            "intent": "suggest",
+            "product_name": None,
+            "product_names": None,
+            "category": None,
         }
     
     # Check for price queries

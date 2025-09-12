@@ -183,3 +183,9 @@ class CreateOrderFormView(View):
             "product_id": product_id,
             "response": result
         })
+
+
+class ProductPricesJSONView(View):
+    def get(self, request):
+        items = list(ProductPrice.objects.values("product_id", "price", "currency"))
+        return JsonResponse({"count": len(items), "items": items})

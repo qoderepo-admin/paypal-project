@@ -128,27 +128,44 @@ class PayPalClient:
     def search_products_by_name(self, search_term: str, exact_match: bool = False):
         """
         Search for products by name across ALL pages.
+        - Exact and partial contains matching
+        - Fuzzy fallback for typos (e.g., "burrito" vs "burito")
         """
+        from difflib import SequenceMatcher
+
         result = self.list_all_products()
         if not result.get("ok"):
             return []
-        
+
         all_products = result.get("data", {}).get("products", [])
         search_term_lower = search_term.lower().strip()
-        
+
         exact_matches = []
         partial_matches = []
-        
+        fuzzy_candidates = []
+
         for product in all_products:
-            product_name = product.get("name", "").lower().strip()
-            
+            product_name = (product.get("name") or "").lower().strip()
+
+            if not product_name:
+                continue
+
             if product_name == search_term_lower:
                 exact_matches.append(product)
             elif not exact_match and (search_term_lower in product_name or product_name in search_term_lower):
                 partial_matches.append(product)
-        
-        matching_products = exact_matches + partial_matches
-        return matching_products
+            else:
+                # Fuzzy ratio for typo tolerance
+                ratio = SequenceMatcher(None, product_name, search_term_lower).ratio()
+                if ratio >= 0.6:
+                    fuzzy_candidates.append((ratio, product))
+
+        if exact_matches or partial_matches:
+            return exact_matches + partial_matches
+
+        # Sort fuzzy candidates by best ratio first
+        fuzzy_candidates.sort(key=lambda x: x[0], reverse=True)
+        return [p for _r, p in fuzzy_candidates[:5]]
 
     def get_product_suggestions(self, search_term: str, max_suggestions: int = 5):
         """

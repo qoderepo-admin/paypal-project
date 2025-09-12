@@ -1,5 +1,11 @@
 from django.urls import path
-from .views import OAuthTokenView, CreateProductView, ListProductsView,CreateOrderFormView
+from .views import (
+    OAuthTokenView,
+    CreateProductView,
+    ListProductsView,
+    CreateOrderFormView,
+    ProductPricesJSONView,
+)
 
 app_name = 'payments'
 
@@ -8,6 +14,7 @@ urlpatterns = [
     path('products/create/', CreateProductView.as_view(), name='create_product'),
     path('products/', ListProductsView.as_view(), name='list_products'),
     path("create-order/", CreateOrderFormView.as_view(), name="create-order"),
+    path('prices/', ProductPricesJSONView.as_view(), name='product_prices_json'),
 
     
 ]

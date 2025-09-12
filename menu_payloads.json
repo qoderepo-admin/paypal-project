@@ -1,0 +1,391 @@
+{
+  "count": 32,
+  "paypal_create_product_payloads": [
+    {
+      "name": "Buffalo Wings (8 pc)",
+      "description": "Crispy wings tossed in buffalo sauce with blue cheese dip.",
+      "type": "SERVICE",
+      "category": "appetizer"
+    },
+    {
+      "name": "Mozzarella Sticks",
+      "description": "Golden fried mozzarella with marinara sauce.",
+      "type": "SERVICE",
+      "category": "appetizer"
+    },
+    {
+      "name": "Loaded Nachos Supreme",
+      "description": "Tortilla chips with cheddar, jalape\u00f1os, salsa, and sour cream.",
+      "type": "SERVICE",
+      "category": "appetizer"
+    },
+    {
+      "name": "Classic Caesar Salad",
+      "description": "Romaine, parmesan, and croutons with Caesar dressing.",
+      "type": "SERVICE",
+      "category": "salad"
+    },
+    {
+      "name": "Classic Cheeseburger",
+      "description": "Beef patty, cheddar, lettuce, tomato, pickle, and house sauce.",
+      "type": "SERVICE",
+      "category": "burger"
+    },
+    {
+      "name": "Bacon BBQ Burger",
+      "description": "Smoky bacon, cheddar, BBQ sauce, and crispy onions.",
+      "type": "SERVICE",
+      "category": "burger"
+    },
+    {
+      "name": "Mushroom Swiss Burger",
+      "description": "Saut\u00e9ed mushrooms, Swiss cheese, and garlic aioli.",
+      "type": "SERVICE",
+      "category": "burger"
+    },
+    {
+      "name": "Veggie Black Bean Burger",
+      "description": "Grilled black bean patty with avocado and chipotle mayo.",
+      "type": "SERVICE",
+      "category": "burger"
+    },
+    {
+      "name": "Double Stack Burger",
+      "description": "Two beef patties, American cheese, and special sauce.",
+      "type": "SERVICE",
+      "category": "burger"
+    },
+    {
+      "name": "Philly Cheesesteak",
+      "description": "Shaved steak, peppers, onions, and provolone on a hoagie.",
+      "type": "SERVICE",
+      "category": "sandwich"
+    },
+    {
+      "name": "Grilled Chicken Sandwich",
+      "description": "Marinated chicken breast with lettuce, tomato, and mayo.",
+      "type": "SERVICE",
+      "category": "sandwich"
+    },
+    {
+      "name": "BLT Sandwich",
+      "description": "Bacon, lettuce, tomato, and mayo on toasted bread.",
+      "type": "SERVICE",
+      "category": "sandwich"
+    },
+    {
+      "name": "Pulled Pork Sandwich",
+      "description": "Slow-cooked BBQ pork with coleslaw on a brioche bun.",
+      "type": "SERVICE",
+      "category": "sandwich"
+    },
+    {
+      "name": "Classic Beef Burrito",
+      "description": "Seasoned ground beef, rice, beans, cheddar, and pico de gallo wrapped in a warm tortilla.",
+      "type": "SERVICE",
+      "category": "burrito"
+    },
+    {
+      "name": "Grilled Chicken Burrito",
+      "description": "Grilled chicken, cilantro-lime rice, black beans, cheese, and salsa.",
+      "type": "SERVICE",
+      "category": "burrito"
+    },
+    {
+      "name": "Veggie Burrito",
+      "description": "Grilled peppers and onions, rice, black beans, corn, guacamole, and salsa fresca.",
+      "type": "SERVICE",
+      "category": "burrito"
+    },
+    {
+      "name": "California Burrito",
+      "description": "Carne asada, french fries, cheddar, guacamole, and sour cream.",
+      "type": "SERVICE",
+      "category": "burrito"
+    },
+    {
+      "name": "Breakfast Burrito",
+      "description": "Scrambled eggs, bacon, potatoes, cheddar, and salsa roja.",
+      "type": "SERVICE",
+      "category": "burrito"
+    },
+    {
+      "name": "Margherita Personal Pizza",
+      "description": "Tomato, fresh mozzarella, and basil.",
+      "type": "SERVICE",
+      "category": "pizza"
+    },
+    {
+      "name": "Pepperoni Personal Pizza",
+      "description": "Tomato sauce, mozzarella, and pepperoni.",
+      "type": "SERVICE",
+      "category": "pizza"
+    },
+    {
+      "name": "BBQ Chicken Personal Pizza",
+      "description": "BBQ sauce, chicken, red onion, and cilantro.",
+      "type": "SERVICE",
+      "category": "pizza"
+    },
+    {
+      "name": "French Fries",
+      "description": "Crispy shoestring fries with sea salt.",
+      "type": "SERVICE",
+      "category": "side"
+    },
+    {
+      "name": "Sweet Potato Fries",
+      "description": "Seasoned sweet potato fries with chipotle dip.",
+      "type": "SERVICE",
+      "category": "side"
+    },
+    {
+      "name": "Onion Rings",
+      "description": "Beer-battered rings with ranch dip.",
+      "type": "SERVICE",
+      "category": "side"
+    },
+    {
+      "name": "Coleslaw",
+      "description": "Creamy cabbage slaw.",
+      "type": "SERVICE",
+      "category": "side"
+    },
+    {
+      "name": "Warm Apple Pie",
+      "description": "Classic spiced apple filling with flaky crust.",
+      "type": "SERVICE",
+      "category": "dessert"
+    },
+    {
+      "name": "Chocolate Brownie Sundae",
+      "description": "Warm brownie with vanilla ice cream and chocolate sauce.",
+      "type": "SERVICE",
+      "category": "dessert"
+    },
+    {
+      "name": "New York Cheesecake",
+      "description": "Rich and creamy classic cheesecake.",
+      "type": "SERVICE",
+      "category": "dessert"
+    },
+    {
+      "name": "Fountain Soda",
+      "description": "Assorted flavors.",
+      "type": "SERVICE",
+      "category": "drink"
+    },
+    {
+      "name": "Iced Tea",
+      "description": "Freshly brewed.",
+      "type": "SERVICE",
+      "category": "drink"
+    },
+    {
+      "name": "Fresh Lemonade",
+      "description": "House-made lemonade.",
+      "type": "SERVICE",
+      "category": "drink"
+    },
+    {
+      "name": "Vanilla Milkshake",
+      "description": "Hand-spun vanilla milkshake.",
+      "type": "SERVICE",
+      "category": "drink"
+    }
+  ],
+  "local_price_suggestions": [
+    {
+      "product_name": "Buffalo Wings (8 pc)",
+      "price": "8.99",
+      "currency": "USD",
+      "category": "appetizer"
+    },
+    {
+      "product_name": "Mozzarella Sticks",
+      "price": "7.99",
+      "currency": "USD",
+      "category": "appetizer"
+    },
+    {
+      "product_name": "Loaded Nachos Supreme",
+      "price": "10.99",
+      "currency": "USD",
+      "category": "appetizer"
+    },
+    {
+      "product_name": "Classic Caesar Salad",
+      "price": "7.49",
+      "currency": "USD",
+      "category": "salad"
+    },
+    {
+      "product_name": "Classic Cheeseburger",
+      "price": "11.99",
+      "currency": "USD",
+      "category": "burger"
+    },
+    {
+      "product_name": "Bacon BBQ Burger",
+      "price": "13.49",
+      "currency": "USD",
+      "category": "burger"
+    },
+    {
+      "product_name": "Mushroom Swiss Burger",
+      "price": "12.99",
+      "currency": "USD",
+      "category": "burger"
+    },
+    {
+      "product_name": "Veggie Black Bean Burger",
+      "price": "11.49",
+      "currency": "USD",
+      "category": "burger"
+    },
+    {
+      "product_name": "Double Stack Burger",
+      "price": "14.49",
+      "currency": "USD",
+      "category": "burger"
+    },
+    {
+      "product_name": "Philly Cheesesteak",
+      "price": "12.99",
+      "currency": "USD",
+      "category": "sandwich"
+    },
+    {
+      "product_name": "Grilled Chicken Sandwich",
+      "price": "11.99",
+      "currency": "USD",
+      "category": "sandwich"
+    },
+    {
+      "product_name": "BLT Sandwich",
+      "price": "10.49",
+      "currency": "USD",
+      "category": "sandwich"
+    },
+    {
+      "product_name": "Pulled Pork Sandwich",
+      "price": "12.49",
+      "currency": "USD",
+      "category": "sandwich"
+    },
+    {
+      "product_name": "Classic Beef Burrito",
+      "price": "10.99",
+      "currency": "USD",
+      "category": "burrito"
+    },
+    {
+      "product_name": "Grilled Chicken Burrito",
+      "price": "10.49",
+      "currency": "USD",
+      "category": "burrito"
+    },
+    {
+      "product_name": "Veggie Burrito",
+      "price": "9.99",
+      "currency": "USD",
+      "category": "burrito"
+    },
+    {
+      "product_name": "California Burrito",
+      "price": "12.49",
+      "currency": "USD",
+      "category": "burrito"
+    },
+    {
+      "product_name": "Breakfast Burrito",
+      "price": "9.49",
+      "currency": "USD",
+      "category": "burrito"
+    },
+    {
+      "product_name": "Margherita Personal Pizza",
+      "price": "11.99",
+      "currency": "USD",
+      "category": "pizza"
+    },
+    {
+      "product_name": "Pepperoni Personal Pizza",
+      "price": "12.99",
+      "currency": "USD",
+      "category": "pizza"
+    },
+    {
+      "product_name": "BBQ Chicken Personal Pizza",
+      "price": "13.49",
+      "currency": "USD",
+      "category": "pizza"
+    },
+    {
+      "product_name": "French Fries",
+      "price": "3.99",
+      "currency": "USD",
+      "category": "side"
+    },
+    {
+      "product_name": "Sweet Potato Fries",
+      "price": "4.49",
+      "currency": "USD",
+      "category": "side"
+    },
+    {
+      "product_name": "Onion Rings",
+      "price": "4.99",
+      "currency": "USD",
+      "category": "side"
+    },
+    {
+      "product_name": "Coleslaw",
+      "price": "3.49",
+      "currency": "USD",
+      "category": "side"
+    },
+    {
+      "product_name": "Warm Apple Pie",
+      "price": "5.99",
+      "currency": "USD",
+      "category": "dessert"
+    },
+    {
+      "product_name": "Chocolate Brownie Sundae",
+      "price": "6.99",
+      "currency": "USD",
+      "category": "dessert"
+    },
+    {
+      "product_name": "New York Cheesecake",
+      "price": "6.49",
+      "currency": "USD",
+      "category": "dessert"
+    },
+    {
+      "product_name": "Fountain Soda",
+      "price": "2.99",
+      "currency": "USD",
+      "category": "drink"
+    },
+    {
+      "product_name": "Iced Tea",
+      "price": "2.99",
+      "currency": "USD",
+      "category": "drink"
+    },
+    {
+      "product_name": "Fresh Lemonade",
+      "price": "3.49",
+      "currency": "USD",
+      "category": "drink"
+    },
+    {
+      "product_name": "Vanilla Milkshake",
+      "price": "5.49",
+      "currency": "USD",
+      "category": "drink"
+    }
+  ]
+}

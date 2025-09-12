@@ -4,11 +4,21 @@ import re
 import logging
 import os
 from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
 
 logger = logging.getLogger(__name__)
 
-# Read the key from the environment; keep client construct lazy-friendly
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "")) 
+load_dotenv()
+
+open_api_key = os.getenv("OPENAI_API_KEY")
+
+if not open_api_key:
+    raise ValueError("OPENAI_API_KEY not found. Please set it as an environment variable or in a .env file.")
+
+client = OpenAI(api_key=open_api_key) 
+
 
 def analyze_user_intent(message: str):
     """

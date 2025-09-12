@@ -1,9 +1,19 @@
 # chatbot_ui.py
+import os
 import streamlit as st
 import requests
 
 st.set_page_config(page_title="PayPal Chatbot", page_icon="🤖")
 st.title("💰 Chatbot")
+
+# Backend URL can be overridden for deployments (e.g., Docker/Nginx setups)
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+CHATBOT_API_PATH = os.getenv("CHATBOT_API_PATH", "/chatbot/api/")
+if not BACKEND_URL.endswith("/"):
+    BACKEND_URL += "/"
+if CHATBOT_API_PATH.startswith("/"):
+    CHATBOT_API_PATH = CHATBOT_API_PATH[1:]
+CHATBOT_API = BACKEND_URL + CHATBOT_API_PATH
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -16,7 +26,7 @@ if st.button("Send") and user_input.strip():
 
     try:
         response = requests.post(
-            "http://127.0.0.1:8000/chatbot/api/",
+            CHATBOT_API,
             json={"message": user_input.strip()},
             timeout=30
         )
@@ -45,5 +55,4 @@ for user_msg, bot_msg in reversed(history_pairs):
     # Then display bot response
     st.markdown(f"<span style='color:green'><strong>{bot_msg[0]}:</strong> {bot_msg[1]}</span>", unsafe_allow_html=True)
     st.markdown("---")  
-
 

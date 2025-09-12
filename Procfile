@@ -1,0 +1,1 @@
+web: bash -lc 'if [ "$RUN_TARGET" = "frontend" ]; then /opt/venv/bin/streamlit run streamlit_chatbot.py --server.address 0.0.0.0 --server.port $PORT; else /opt/venv/bin/gunicorn paypal_project.wsgi:application --bind 0.0.0.0:$PORT; fi'

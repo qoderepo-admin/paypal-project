@@ -7,8 +7,7 @@ import json
 import logging
 from django.shortcuts import render
 
-from payments.models import ProductPrice
-from payments.paypal_api import PayPalClient
+from paypal_project.paypal_api import PayPalClient
 from .nlp_utils import analyze_user_intent
 
 logger = logging.getLogger(__name__)
@@ -38,6 +37,55 @@ class ChatbotAPI(View):
         # Lightweight conversation memory for follow-ups
         last_product = request.session.get("last_product")  # {"id": str, "name": str}
         last_category = request.session.get("last_category")  # e.g., 'pizza', 'burrito'
+        awaiting_email = request.session.get("awaiting_email")
+        pending_invoice_items = request.session.get("pending_invoice_items")  # list of {id,name,quantity}
+
+        # Minimal order flow: capture email and create/send PayPal invoice
+        import re
+        EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+        if awaiting_email:
+            m = EMAIL_RE.search(user_message)
+            if m:
+                email = m.group(0)
+                # Build line items from pending item ids
+                items, price_by_id = [], {}
+                menu, price_by_id = (lambda: (paypal_client.list_all_invoicing_items().get('data',{}).get('items',[]), {}))()
+                # Rebuild the price map
+                pb = {}
+                for it in menu:
+                    uid = it.get('id')
+                    amt = it.get('unit_amount') or {}
+                    if uid and amt.get('value'):
+                        pb[uid] = (str(amt.get('value')), (amt.get('currency_code') or 'USD').upper(), it.get('name'))
+                line_items = []
+                for sel in pending_invoice_items or []:
+                    pid = sel.get('id')
+                    qty = str(sel.get('quantity', 1))
+                    if pid in pb:
+                        val, cur, nm = pb[pid]
+                        line_items.append({
+                            'name': nm or sel.get('name') or 'Item',
+                            'quantity': qty,
+                            'unit_amount': {'currency_code': cur, 'value': str(val)},
+                        })
+                if not line_items:
+                    request.session['awaiting_email'] = False
+                    request.session['pending_invoice_items'] = []
+                    request.session.modified = True
+                    return JsonResponse({"reply": "Sorry, I lost the cart context. Please say 'order <item name>' again."})
+
+                # Create and send invoice
+                inv = paypal_client.create_and_send_invoice(email, line_items, currency='USD')
+                request.session['awaiting_email'] = False
+                request.session['pending_invoice_items'] = []
+                request.session.modified = True
+                if inv.get('ok'):
+                    return JsonResponse({"reply": f"✅ Order successful. A PayPal payment link was emailed to {email}."})
+                else:
+                    return JsonResponse({"reply": f"❌ Could not create invoice: {inv.get('error','unknown error')}"})
+            else:
+                return JsonResponse({"reply": "Please enter a valid email id to receive the payment link."})
 
         def infer_category_emoji(text: str | None):
             n = (text or "").lower()
@@ -59,23 +107,35 @@ class ChatbotAPI(View):
                 return "dessert", "🍰"
             return None, "•"
 
+        # Load menu + prices from PayPal Invoicing catalog
+        def _load_menu_and_prices():
+            res = paypal_client.list_all_invoicing_items()
+            if not res.get("ok"):
+                return [], {}
+            items = res.get("data", {}).get("items", [])
+            price_by_id = {}
+            for it in items:
+                iid = it.get("id")
+                amt = it.get("unit_amount") or {}
+                if iid and amt.get("value"):
+                    price_by_id[iid] = (str(amt.get("value")), (amt.get("currency_code") or "USD").upper())
+            return items, price_by_id
+
         def build_category_recommendations(cat_key: str, title_prefix: str = "More"):
             if not cat_key:
                 return None
-            result_all = paypal_client.list_all_products()
-            if not result_all.get("ok"):
+            prods, price_by_id = _load_menu_and_prices()
+            if not prods:
                 return None
-            prods = result_all.get("data", {}).get("products", [])
-            local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
             priced_lines, unpriced = [], []
             for p in prods:
                 cat, _ = infer_category_emoji(p.get("name"))
                 if cat == cat_key:
                     pid = p.get("id")
                     name = p.get("name") or ""
-                    if pid in local_prices:
-                        pr = local_prices[pid]
-                        priced_lines.append(f"• {name}: {pr.price} {pr.currency}")
+                    if pid in price_by_id:
+                        val, cur = price_by_id[pid]
+                        priced_lines.append(f"• {name}: {val} {cur}")
                     else:
                         unpriced.append(f"• {name}")
             lines = sorted(priced_lines)[:5]
@@ -128,6 +188,37 @@ class ChatbotAPI(View):
                 if inferred_product_name:
                     intent = "price_query"
                     product_name = inferred_product_name
+
+        # Minimal order detection: user wants to place an order
+        order_triggers = ("order", "buy", "checkout")
+        if any(k in user_lower for k in order_triggers):
+            # Try to resolve a product from the message
+            target_name = product_name or user_message
+            matches = paypal_client.search_items_by_name(target_name)
+            if not matches:
+                return JsonResponse({"reply": "I couldn't find that item. Try 'order Margherita Pizza'."})
+            if len(matches) > 1:
+                # Ask to clarify
+                names = []
+                seen = set()
+                for m in matches:
+                    nm = (m.get('name') or '').strip()
+                    if nm and nm.lower() not in seen:
+                        names.append(f"• {nm}")
+                        seen.add(nm.lower())
+                    if len(names) >= 5:
+                        break
+                return JsonResponse({"reply": "Which one would you like to order?\n" + "\n".join(names)})
+            # Single match – set pending cart and ask for email
+            sel = matches[0]
+            request.session['pending_invoice_items'] = [{
+                'id': sel.get('id'),
+                'name': sel.get('name'),
+                'quantity': 1,
+            }]
+            request.session['awaiting_email'] = True
+            request.session.modified = True
+            return JsonResponse({"reply": "Great! Please enter email id to receive the payment link."})
 
         # If the model returned 'other', try to infer a category from the message/history
         if (not intent or intent == "other"):
@@ -187,9 +278,9 @@ class ChatbotAPI(View):
             if prev_user_text and "pizza" in prev_user_text.lower():
                 intent = "pizza_types"
             elif prev_user_text:
-                matches = paypal_client.search_products_by_name(prev_user_text)
+                matches = paypal_client.search_items_by_name(prev_user_text)
                 if matches:
-                    local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
+                    _items, price_by_id = _load_menu_and_prices()
                     lines = []
                     shown = set()
                     for m in matches:
@@ -198,9 +289,9 @@ class ChatbotAPI(View):
                         if not name or name in shown:
                             continue
                         shown.add(name)
-                        if pid in local_prices:
-                            pr = local_prices[pid]
-                            lines.append(f"• {name}: {pr.price} {pr.currency}")
+                        if pid in price_by_id:
+                            val, cur = price_by_id[pid]
+                            lines.append(f"• {name}: {val} {cur}")
                         else:
                             lines.append(f"• {name}")
                         if len(lines) >= 8:
@@ -221,31 +312,35 @@ class ChatbotAPI(View):
             # If no context found, fall through to normal handlers
 
         if intent in ("list_products", "suggest"):
-            # Use new method to get ALL products
-            result = paypal_client.list_all_products()
+            # Use invoicing catalog items as the source of truth
+            result = paypal_client.list_all_invoicing_items()
             if result.get("ok"):
                 products_data = result.get("data", {})
-                all_products = products_data.get("products", [])
-                pages_fetched = products_data.get("pages_fetched", 0)
-
+                all_products = products_data.get("items", [])
                 if not all_products:
-                    reply = "No products found in your PayPal account."
+                    reply = "No menu items found in PayPal."
                 else:
+                    # Build price map
+                    price_by_id = {}
+                    for it in all_products:
+                        uid = it.get("id")
+                        amt = it.get("unit_amount") or {}
+                        if uid and amt.get("value"):
+                            price_by_id[uid] = (str(amt.get("value")), (amt.get("currency_code") or "USD").upper())
+
                     # Generic filtering driven by LLM-provided search_terms/category
-                    local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
                     search_terms = nlp_result.get("search_terms") or []
                     if not isinstance(search_terms, list):
                         search_terms = []
                     search_terms = [str(t).lower().strip() for t in search_terms if str(t).strip()]
                     if not search_terms and category:
                         search_terms = [str(category).lower().strip()]
-                    # Robust fallback: derive terms from the user's message if LLM didn't supply any
                     if not search_terms:
                         import re
                         stop = {"do","you","have","a","an","the","any","please","me","some","item","items","view","show","all","options","what","are","is","there","available","of","for"}
                         tokens = [t for t in re.split(r"[^a-zA-Z]+", user_lower) if t]
                         terms = [t for t in tokens if t not in stop and len(t) > 1]
-                        search_terms = terms[:4]  # keep it short
+                        search_terms = terms[:4]
 
                     def matches_terms(name: str) -> bool:
                         n = (name or "").lower()
@@ -260,9 +355,9 @@ class ChatbotAPI(View):
                         if not matches_terms(name):
                             continue
                         pid = p.get("id")
-                        if pid in local_prices:
-                            pr = local_prices[pid]
-                            filtered_priced.append((name, str(pr.price), pr.currency))
+                        if pid in price_by_id:
+                            pr_val, pr_cur = price_by_id[pid]
+                            filtered_priced.append((name, str(pr_val), pr_cur))
                         else:
                             filtered_unpriced.append(name)
                     filtered_priced.sort(key=lambda t: t[0])
@@ -295,7 +390,7 @@ class ChatbotAPI(View):
                         suggestions = []
                         if query_str:
                             try:
-                                suggestions = paypal_client.get_product_suggestions(query_str, max_suggestions=8)
+                                suggestions = paypal_client.get_item_suggestions(query_str, max_suggestions=8)
                             except Exception:
                                 suggestions = []
 
@@ -310,9 +405,9 @@ class ChatbotAPI(View):
                                     lines.append(f"• {s}")
                                     continue
                                 pid = prod.get("id")
-                                if pid in local_prices:
-                                    pr = local_prices[pid]
-                                    lines.append(f"• {s}: {pr.price} {pr.currency}")
+                                if pid in price_by_id:
+                                    pr_val, pr_cur = price_by_id[pid]
+                                    lines.append(f"• {s}: {pr_val} {pr_cur}")
                                 else:
                                     lines.append(f"• {s}")
                             reply = f"I couldn't find '{query_str}'. Here are some similar items:\n" + "\n".join(lines)
@@ -321,25 +416,31 @@ class ChatbotAPI(View):
                             priced_all = []
                             for p in all_products:
                                 pid = p.get("id")
-                                if pid in local_prices:
-                                    pr = local_prices[pid]
-                                    priced_all.append(((p.get("name") or ""), str(pr.price), pr.currency))
+                                if pid in price_by_id:
+                                    pr_val, pr_cur = price_by_id[pid]
+                                    priced_all.append(((p.get("name") or ""), str(pr_val), pr_cur))
                             priced_all.sort(key=lambda t: t[0])
                             lines = [f"• {n}: {p} {c}" for n, p, c in priced_all[:8]] or ["• Browse the menu to see options"]
                             reply = f"I couldn't find '{query_str}'. Here are some popular items:\n" + "\n".join(lines)
                     else:
                         reply = render_block(title)
             else:
-                reply = f"Error fetching products: {result.get('error', 'Unknown error')}"
+                reply = f"Error fetching items: {result.get('error', 'Unknown error')}"
         
         elif intent == "pizza_types":
             # Handle pizza types/menu requests (show all pizzas)
-            result = paypal_client.list_all_products()
+            result = paypal_client.list_all_invoicing_items()
             if result.get("ok"):
                 products_data = result.get("data", {})
-                all_products = products_data.get("products", [])
+                all_products = products_data.get("items", [])
 
-                local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
+                # Build price map
+                price_by_id = {}
+                for it in all_products:
+                    uid = it.get("id")
+                    amt = it.get("unit_amount") or {}
+                    if uid and amt.get("value"):
+                        price_by_id[uid] = (str(amt.get("value")), (amt.get("currency_code") or "USD").upper())
 
                 pizza_with_prices = []
                 unpriced_pizza = 0
@@ -347,9 +448,9 @@ class ChatbotAPI(View):
                     name_lower = product.get("name", "").lower()
                     pid = product.get("id")
                     if "pizza" in name_lower:
-                        if pid in local_prices:
-                            pr = local_prices[pid]
-                            pizza_with_prices.append((product.get("name", ""), str(pr.price), pr.currency))
+                        if pid in price_by_id:
+                            pr_val, pr_cur = price_by_id[pid]
+                            pizza_with_prices.append((product.get("name", ""), str(pr_val), pr_cur))
                         else:
                             unpriced_pizza += 1
 
@@ -364,11 +465,11 @@ class ChatbotAPI(View):
                     else:
                         reply = "🍕 No pizza products found."
             else:
-                reply = f"Error fetching products: {result.get('error', 'Unknown error')}"
+                reply = f"Error fetching items: {result.get('error', 'Unknown error')}"
 
         elif product_name:
             # Handle specific product queries (including specific pizza price queries)
-            matching_products = paypal_client.search_products_by_name(product_name)
+            matching_products = paypal_client.search_items_by_name(product_name)
             
             logger.debug(f"Matched PayPal products: {len(matching_products)}")
             print(f"Matched PayPal products: {len(matching_products)}")
@@ -378,25 +479,22 @@ class ChatbotAPI(View):
                 if (product_name.lower() == "pizza" and 
                     len(matching_products) > 1 and 
                     all("pizza" in p["name"].lower() for p in matching_products)):
-                    
                     # Generic pizza query with multiple results - show all pizzas with prices
-                    local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
-                    pizza_with_prices = [p for p in matching_products if p["id"] in local_prices]
-                    
+                    _all, price_by_id = _load_menu_and_prices()
+                    pizza_with_prices = [p for p in matching_products if p.get("id") in price_by_id]
                     if pizza_with_prices:
                         pizza_list = []
                         for product in pizza_with_prices:
-                            product_id = product["id"]
-                            product_name_display = product["name"]
-                            price_info = local_prices[product_id]
-                            pizza_list.append(f"• {product_name_display}: {price_info.price} {price_info.currency}")
-                        
+                            product_id = product.get("id")
+                            product_name_display = product.get("name")
+                            pr_val, pr_cur = price_by_id[product_id]
+                            pizza_list.append(f"• {product_name_display}: {pr_val} {pr_cur}")
                         if intent == "price_query":
                             reply = f"🍕 All Pizza Prices:\n" + "\n".join(pizza_list)
                         else:
                             reply = f"🍕 Found {len(pizza_with_prices)} Pizza Types with Prices:\n" + "\n".join(pizza_list)
                     else:
-                        reply = "🍕 No pizza products with prices set found."
+                        reply = "🍕 No pizza products with prices available."
                 else:
                     # Handle specific product (including specific pizza like "margherita pizza")
                     matched_product = matching_products[0]
@@ -409,18 +507,15 @@ class ChatbotAPI(View):
                     request.session.modified = True
 
                     if intent == "price_query":
-                        # Fetch price from local DB for specific product
-                        try:
-                            product = ProductPrice.objects.get(product_id=product_id)
-                            _cat, emj = infer_category_emoji(matched_product['name'])
-                            reply = f"{emj} {matched_product['name']}\n\n💰 Price: {product.price} {product.currency}"
-                            
-                            # Mention if there are other similar products
+                        # Price from invoicing items
+                        _all, price_by_id = _load_menu_and_prices()
+                        _cat, emj = infer_category_emoji(matched_product['name'])
+                        if product_id in price_by_id:
+                            pr_val, pr_cur = price_by_id[product_id]
+                            reply = f"{emj} {matched_product['name']}\n\n💰 Price: {pr_val} {pr_cur}"
                             if len(matching_products) > 1:
                                 reply += f"\n\n(Found {len(matching_products)} similar products)"
-                                
-                        except ProductPrice.DoesNotExist:
-                            _cat, emj = infer_category_emoji(matched_product['name'])
+                        else:
                             alt = build_category_recommendations(_cat or last_category or "", title_prefix="Similar") if (_cat or last_category) else None
                             if alt:
                                 reply = f"{emj} {matched_product['name']}\n\n💰 Price: Unavailable.\n\n{alt}"
@@ -435,12 +530,12 @@ class ChatbotAPI(View):
                             # Use the description to provide conversational response
                             _cat, emj = infer_category_emoji(matched_product['name'])
                             reply = f"{emj} **{matched_product['name']}**\n\n{product_description}"
-                            
                             # Add price if available
-                            try:
-                                product = ProductPrice.objects.get(product_id=product_id)
-                                reply += f"\n\n💰 **Price:** {product.price} {product.currency}"
-                            except ProductPrice.DoesNotExist:
+                            _all, price_by_id = _load_menu_and_prices()
+                            if product_id in price_by_id:
+                                pr_val, pr_cur = price_by_id[product_id]
+                                reply += f"\n\n💰 **Price:** {pr_val} {pr_cur}"
+                            else:
                                 alt = build_category_recommendations(_cat or last_category or "", title_prefix="Similar") if (_cat or last_category) else None
                                 if alt:
                                     reply += f"\n\n💰 **Price:** Unavailable\n\n{alt}"
@@ -450,12 +545,12 @@ class ChatbotAPI(View):
                             # Fallback if no description available
                             _cat, emj = infer_category_emoji(matched_product['name'])
                             reply = f"ℹ️ **{matched_product['name']}**\n\nSorry, I don't have detailed information about this product right now."
-                            
                             # Still show price if available
-                            try:
-                                product = ProductPrice.objects.get(product_id=product_id)
-                                reply += f"\n\n💰 **Price:** {product.price} {product.currency}"
-                            except ProductPrice.DoesNotExist:
+                            _all, price_by_id = _load_menu_and_prices()
+                            if product_id in price_by_id:
+                                pr_val, pr_cur = price_by_id[product_id]
+                                reply += f"\n\n💰 **Price:** {pr_val} {pr_cur}"
+                            else:
                                 alt = build_category_recommendations(_cat or last_category or "", title_prefix="Similar") if (_cat or last_category) else None
                                 if alt:
                                     reply += f"\n\n💰 **Price:** Unavailable\n\n{alt}"
@@ -468,7 +563,7 @@ class ChatbotAPI(View):
                     else:
                         # If multiple similar matches, show options instead of a generic line
                         if len(matching_products) > 1 and intent not in ("price_query", "product_info"):
-                            local_prices = {p.product_id: p for p in ProductPrice.objects.all()}
+                            _all, price_by_id = _load_menu_and_prices()
                             lines = []
                             shown = set()
                             for m in matching_products:
@@ -477,9 +572,9 @@ class ChatbotAPI(View):
                                 if not name or name in shown:
                                     continue
                                 shown.add(name)
-                                if pid in local_prices:
-                                    pr = local_prices[pid]
-                                    lines.append(f"• {name}: {pr.price} {pr.currency}")
+                                if pid in price_by_id:
+                                    pr_val, pr_cur = price_by_id[pid]
+                                    lines.append(f"• {name}: {pr_val} {pr_cur}")
                                 else:
                                     lines.append(f"• {name}")
                                 if len(lines) >= 8:
@@ -490,27 +585,29 @@ class ChatbotAPI(View):
                             reply = f"{emj} Product '{matched_product['name']}' is available."
             else:
                 # Get suggestions if no exact match
-                suggestions = paypal_client.get_product_suggestions(product_name, max_suggestions=3)
+                suggestions = paypal_client.get_item_suggestions(product_name, max_suggestions=3)
                 
                 if suggestions:
                     reply = f"No exact match for '{product_name}'. Did you mean: {', '.join(suggestions)}?"
                 else:
                     # Show total products searched
-                    result = paypal_client.list_all_products()
+                    result = paypal_client.list_all_invoicing_items()
                     if result.get("ok"):
                         total_products = result.get("data", {}).get("total_items", 0)
-                        reply = f"No product found with name '{product_name}'. Searched {total_products} total products."
+                        reply = f"No item found with name '{product_name}'. Searched {total_products} total items."
                     else:
-                        reply = f"No product found with name '{product_name}'."
+                        reply = f"No item found with name '{product_name}'."
 
         # Handle price follow-up with context when no product name provided
         elif intent == "price_query" and not product_name:
             if last_product:
-                try:
-                    product = ProductPrice.objects.get(product_id=last_product["id"])
-                    reply = f"💰 {last_product['name']}: {product.price} {product.currency}"
-                except ProductPrice.DoesNotExist:
-                    reply = f"Price for '{last_product['name']}' is not set locally."
+                _all, price_by_id = _load_menu_and_prices()
+                pid = last_product.get("id") if isinstance(last_product, dict) else None
+                if pid and pid in price_by_id:
+                    pr_val, pr_cur = price_by_id[pid]
+                    reply = f"💰 {last_product.get('name')}: {pr_val} {pr_cur}"
+                else:
+                    reply = f"Price for '{last_product.get('name')}' is not available."
             else:
                 reply = "Which product are you asking the price for?"
 

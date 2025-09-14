@@ -1,353 +1,261 @@
 # chatbot/nlp_utils.py
 import json
-import re
 import logging
 import os
-from openai import OpenAI
-import os
+from typing import Any, Dict
+
 from dotenv import load_dotenv
+from openai import OpenAI
+
+from paypal_project.paypal_api import PayPalClient
 
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-open_api_key = os.getenv("OPENAI_API_KEY")
+# OpenAI client and model
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip().strip('"').strip("'")
 
-def _strip_quotes(val: str | None) -> str | None:
-    if val is None:
-        return None
-    return val.strip().strip('"').strip("'")
 
-def _normalize_model_name(name: str) -> str:
-    # Replace common Unicode dashes with ASCII '-'
+def _normalize_model_name(name: str | None) -> str:
     if not name:
-        return name
-    dash_chars = "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
-    trans = str.maketrans({c: '-' for c in dash_chars})
-    return name.translate(trans).strip()
+        return "gpt-4o-mini"
+    dashes = "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+    return name.translate(str.maketrans({c: '-' for c in dashes})).strip()
 
-# Allow selecting the model via env; default to a stronger inexpensive model
-openai_model = _normalize_model_name(_strip_quotes(os.getenv("OPENAI_MODEL", "gpt-4o-mini")) or "gpt-4o-mini")
 
-# Optional: control temperature via env (default 0.0 for deterministic intent)
-_temp_raw = _strip_quotes(os.getenv("OPENAI_TEMPERATURE", "0"))
+OPENAI_MODEL = _normalize_model_name((os.getenv("OPENAI_MODEL") or "gpt-4o-mini").strip())
 try:
-    openai_temperature = float(_temp_raw) if _temp_raw not in (None, "") else 0.0
+    OPENAI_TEMPERATURE = float((os.getenv("OPENAI_TEMPERATURE") or "0.3").strip() or 0.3)
 except ValueError:
-    openai_temperature = 0.0
+    OPENAI_TEMPERATURE = 0.3
 
-if not open_api_key:
-    raise ValueError("OPENAI_API_KEY not found. Please set it as an environment variable or in a .env file.")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-client = OpenAI(api_key=_strip_quotes(open_api_key) if open_api_key else None)
+# PayPal client (Sandbox/Live determined by settings)
+pp_client = PayPalClient()
 
 
-def analyze_user_intent(message: str):
-    """
-    Analyze user message using OpenAI GPT to extract intent, product names, and category.
-    Returns JSON like:
-    {
-      "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "suggest" or "other",
-      "product_name": "<name or null>",
-      "product_names": ["<name1>", "<name2>"] or null (for comparisons),
-      "category": "<category like pizza, burger, etc. or null>",
-      "search_terms": ["token1", "token2", ...]  // generic keywords to filter product names
-    }
-    """
-    prompt = f"""
-    You are a helpful assistant. Determine the user's intent, product names, and category.
-    User message: "{message}"
-    
-    Respond ONLY in JSON format like:
-    {{
-        "intent": "price_query" or "list_products" or "pizza_types" or "product_info" or "suggest" or "other",
-        "product_name": "<name or null>",
-        "product_names": null,
-        "category": "<category or null>",
-        "search_terms": ["token1", "token2"]
-    }}
-    
-    Intent guidelines:
-    - "price_query": user asks for price of a specific product
-    - "list_products": user wants to see all products/list/catalog
-    - "pizza_types": user asks about different types of pizza, pizza varieties, or pizza menu
-    - "product_info": user asks for information/description/details about a specific product
-    - "suggest": user asks for recommendations or other options (e.g., "what else do you suggest", "recommend something")
-    - "other": any other request
-    
-    Product name guidelines:
-    - For all queries: set "product_name" and leave "product_names" as null
-    - Extract the exact product names mentioned
-    - Return null if no specific product is mentioned
-    - For general queries like "pizza" or "pizzas", set product_name to "pizza"
-    
-    Category guidelines:
-    - Identify the food category (e.g., pizza, burger, drink, dessert) when the user mentions one
-    - Return null if no category is mentioned
-
-    Search terms:
-    - Always provide a short list (3-8) of generic, lowercase keywords that would appear in product names
-    - Include singular/plural and common synonyms; e.g., for dessert include: dessert, brownie, cheesecake, pie, sundae, cake, ice cream
-    - For burgers include: burger, cheeseburger, beef, patty
-    - For burritos include: burrito, burito
-    - For pizza include: pizza
-    
-    Examples:
-    - "what pizzas do you have" → intent: "pizza_types", product_name: null, product_names: null, category: "pizza", search_terms:["pizza"]
-    - "price of margherita pizza" → intent: "price_query", product_name: "margherita pizza", product_names: null, category: "pizza", search_terms:["margherita","pizza"]
-    - "view dessert items" → intent: "list_products", product_name: null, product_names: null, category: "dessert", search_terms:["dessert","brownie","cheesecake","pie","sundae","cake","ice cream"]
-    - "what else do you suggest" → intent: "suggest", product_name: null, product_names: null, category: null, search_terms:[]
-    """
-
+def _list_all_menu_items(query: str | None = None, limit: int | None = None) -> list[dict]:
+    """Return simplified list of invoicing catalog items with pricing."""
     try:
-        response = client.chat.completions.create(
-            model=openai_model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that extracts intent, product names, and categories from user messages. Always respond in valid JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,
-            temperature=openai_temperature
+        res = pp_client.list_all_invoicing_items()
+        if not res.get("ok"):
+            return []
+        items = res.get("data", {}).get("items", [])
+        out = []
+        q = (query or "").lower().strip()
+        for it in items:
+            name = (it.get("name") or "").strip()
+            if q and q not in name.lower():
+                continue
+            amt = it.get("unit_amount") or {}
+            out.append({
+                "id": it.get("id"),
+                "name": name,
+                "description": it.get("description") or "",
+                "price": str(amt.get("value")) if amt.get("value") is not None else None,
+                "currency": (amt.get("currency_code") or "USD").upper() if amt else None,
+            })
+            if limit and len(out) >= limit:
+                break
+        return out
+    except Exception:
+        return []
+
+
+def _search_items(term: str, exact: bool = False) -> list[dict]:
+    matches = pp_client.search_items_by_name(term, exact_match=bool(exact))
+    out = []
+    # Build a price map to attach pricing
+    try:
+        all_items = _list_all_menu_items()
+        price_by_id = {x["id"]: (x["price"], x["currency"]) for x in all_items if x.get("id")}
+    except Exception:
+        price_by_id = {}
+    for m in matches or []:
+        mid = m.get("id")
+        pr_val, pr_cur = price_by_id.get(mid, (None, None))
+        out.append({
+            "id": mid,
+            "name": (m.get("name") or "").strip(),
+            "price": pr_val,
+            "currency": pr_cur,
+        })
+    return out
+
+
+def _get_pricing(id: str | None = None, name: str | None = None) -> Dict[str, Any]:
+    items = _list_all_menu_items()
+    if id:
+        for it in items:
+            if it.get("id") == id:
+                return {"match_type": "id", "items": [it]}
+        return {"match_type": "id", "items": []}
+    if name:
+        name_l = name.lower().strip()
+        matches = []
+        for it in items:
+            nm = (it.get("name") or "").lower().strip()
+            if nm == name_l or name_l in nm or nm in name_l:
+                matches.append(it)
+        return {"match_type": "name", "items": matches}
+    return {"match_type": "none", "items": []}
+
+
+def get_response(user_message, user_lower, history):
+    """Chat with LLM and allow tool calls to query PayPal catalog and prices."""
+    if client is None:
+        return "Hi! LLM is not configured. Please set OPENAI_API_KEY."
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "list_products",
+                "description": "List available menu items from PayPal invoicing catalog. Optionally filter by a query substring.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Optional case-insensitive name contains filter."},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 100}
+                    },
+                    "required": []
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_all_products",
+                "description": "List all menu items with prices (alias to list_products without filter).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 200}
+                    },
+                    "required": []
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_items_by_name",
+                "description": "Search items by name with fuzzy matching and include price when available.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "term": {"type": "string"},
+                        "exact": {"type": "boolean"}
+                    },
+                    "required": ["term"]
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_item_suggestions",
+                "description": "Suggest item names based on overlap with item words.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "term": {"type": "string"},
+                        "max": {"type": "integer", "minimum": 1, "maximum": 20}
+                    },
+                    "required": ["term"]
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_product_pricing",
+                "description": "Get price and currency for an item by id or by name.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"}
+                    },
+                    "required": []
+                },
+            },
+        },
+    ]
+
+    def _call_tool(name: str, arguments: dict) -> str:
+        try:
+            if name == "list_products":
+                items = _list_all_menu_items(arguments.get("query"), arguments.get("limit"))
+                return json.dumps({"items": items})
+            if name == "list_all_products":
+                items = _list_all_menu_items(limit=arguments.get("limit"))
+                return json.dumps({"items": items})
+            if name == "search_items_by_name":
+                term = arguments.get("term") or ""
+                exact = bool(arguments.get("exact", False))
+                items = _search_items(term, exact=exact)
+                return json.dumps({"items": items})
+            if name == "get_item_suggestions":
+                term = arguments.get("term") or ""
+                mx = int(arguments.get("max", 8))
+                suggests = pp_client.get_item_suggestions(term, max_suggestions=mx)
+                return json.dumps({"suggestions": suggests})
+            if name == "get_product_pricing":
+                return json.dumps(_get_pricing(arguments.get("id"), arguments.get("name")))
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+        return json.dumps({"error": f"unknown tool {name}"})
+
+    sys_prompt = (
+        "You are a helpful food-ordering assistant."
+        " Use the provided tools to look up the live menu and prices from PayPal invoicing catalog."
+        " Be concise and friendly."
+        " If the user wants to order something, confirm the item and quantity and ask for their email to send a PayPal payment link."
+    )
+
+    msgs = [{"role": "system", "content": sys_prompt}]
+
+    # Include recent history as context
+    try:
+        for role, text in history[-6:]:
+            role_norm = "user" if str(role).lower().startswith("you") else "assistant"
+            msgs.append({"role": role_norm, "content": str(text)})
+    except Exception:
+        pass
+
+    msgs.append({"role": "user", "content": user_message})
+
+    # Tool loop
+    for _ in range(3):
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=msgs,
+            tools=tools,
+            tool_choice="auto",
+            temperature=OPENAI_TEMPERATURE,
+            max_tokens=800,
         )
-
-        output_text = response.choices[0].message.content.strip()
-        logger.debug(f"NLP raw output: {output_text}")
-        print(f"NLP raw output: {output_text}")
-
-        cleaned_text = re.sub(r"^```json\s*|```\s*$", "", output_text, flags=re.MULTILINE).strip()
-        logger.debug(f"NLP cleaned output: {cleaned_text}")
-        return json.loads(cleaned_text)
-    except json.JSONDecodeError as e:
-        logger.error("JSON decode error in NLP: %s", e)
-        print("JSON decode error in NLP:", e)
-        return fallback_intent_analysis(message)
-    except Exception as e:
-        logger.error("Error calling model '%s': %s", openai_model, e)
-        print("Error in NLP:", e)
-        return fallback_intent_analysis(message)
-
-def fallback_intent_analysis(message: str):
-    """
-    Enhanced fallback logic when OpenAI fails
-    """
-    message_lower = message.lower().strip()
-    
-    # Check for product information requests
-    info_keywords = [
-        'tell me about', 'what is', 'describe', 'description of', 'info about',
-        'information about', 'details about', 'about', 'explain', 'tell me something about',
-        'what\'s in', 'ingredients of', 'made of', 'contains'
-    ]
-    
-    if any(keyword in message_lower for keyword in info_keywords):
-        category = None
-        product_name = None
-        
-        # Detect category
-        if 'pizza' in message_lower:
-            category = 'pizza'
-        elif 'burger' in message_lower:
-            category = 'burger'
-        elif 'drink' in message_lower:
-            category = 'drink'
-        
-        # Extract product name after info keywords
-        for keyword in info_keywords:
-            if keyword in message_lower:
-                parts = message_lower.split(keyword)
-                if len(parts) > 1:
-                    potential_product = parts[1].strip()
-                    # Clean up common words
-                    potential_product = re.sub(r'\b(the|a|an)\b', '', potential_product).strip()
-                    if potential_product:
-                        product_name = potential_product.title()
-                        break
-        
-        return {
-            "intent": "product_info", 
-            "product_name": product_name, 
-            "product_names": None,
-            "category": category
-        }
-    
-    # Check for pizza type requests
-    pizza_type_keywords = [
-        'pizza types', 'types of pizza', 'pizza menu', 'pizza varieties', 
-        'different pizzas', 'what pizzas', 'pizza options', 'available pizzas',
-        'pizza flavors', 'pizza kinds'
-    ]
-    
-    if any(keyword in message_lower for keyword in pizza_type_keywords):
-        return {
-            "intent": "pizza_types", 
-            "product_name": None, 
-            "product_names": None,
-            "category": "pizza"
-        }
-    
-    # Check for general list requests (broader synonyms)
-    list_triggers = [
-        'list', 'show all', 'all products', 'catalog', 'menu',
-        'options', 'choices', 'what are the options', 'what options', 'what are my options',
-        'do you have', 'what do you have', 'what can i get',
-        'view all', 'view items', 'view all items', 'see all', 'see items', 'see menu',
-        'browse menu', 'browse items', 'what is available', "what's available", 'available items',
-        'all items', 'everything you have', 'everything', 'show me all'
-    ]
-    if any(word in message_lower for word in list_triggers):
-        # Infer category from the message if possible
-        cat = None
-        if 'pizza' in message_lower:
-            cat = 'pizza'
-        elif 'burrito' in message_lower or 'burito' in message_lower:
-            cat = 'burrito'
-        elif 'burger' in message_lower or 'cheeseburger' in message_lower:
-            cat = 'burger'
-        elif 'sandwich' in message_lower or 'hoagie' in message_lower:
-            cat = 'sandwich'
-        elif 'salad' in message_lower or 'caesar' in message_lower:
-            cat = 'salad'
-        elif 'fries' in message_lower or 'onion rings' in message_lower or 'side' in message_lower:
-            cat = 'side'
-        elif any(k in message_lower for k in ['drink', 'soda', 'lemonade', 'milkshake', 'iced tea']):
-            cat = 'drink'
-        elif any(k in message_lower for k in ['dessert', 'brownie', 'cheesecake', 'pie']):
-            cat = 'dessert'
-        return {
-            "intent": "list_products", 
-            "product_name": None, 
-            "product_names": None,
-            "category": cat
-        }
-
-    # Single-word or short-category fallback (e.g., "burrito", "dessert")
-    # Helps when the model isn't available or returns "other" for terse inputs
-    tokens = re.findall(r"[a-zA-Z]+", message_lower)
-    if 1 <= len(tokens) <= 3:
-        cat_map = {
-            'pizza': ('pizza', ['pizza']),
-            'burrito': ('burrito', ['burrito','burito']),
-            'burito': ('burrito', ['burrito','burito']),
-            'burger': ('burger', ['burger','cheeseburger']),
-            'sandwich': ('sandwich', ['sandwich','hoagie']),
-            'salad': ('salad', ['salad','caesar']),
-            'fries': ('side', ['fries','onion rings','side']),
-            'side': ('side', ['side','fries','onion rings']),
-            'drink': ('drink', ['drink','soda','lemonade','milkshake','tea']),
-            'dessert': ('dessert', ['dessert','brownie','cheesecake','pie','sundae','cake','ice cream']),
-        }
-        for t in tokens:
-            if t in cat_map:
-                cat, terms = cat_map[t]
-                return {
-                    "intent": "list_products",
-                    "product_name": None,
-                    "product_names": None,
-                    "category": cat,
-                    "search_terms": terms,
-                }
-
-    # Suggestions / recommendations
-    suggest_triggers = [
-        'suggest', 'recommend', 'what else', 'anything else', 'something else',
-        'other options', 'other items', 'more options', 'what more', 'what others'
-    ]
-    if any(word in message_lower for word in suggest_triggers):
-        # Keep it generic; the view will use conversation context/history
-        return {
-            "intent": "suggest",
-            "product_name": None,
-            "product_names": None,
-            "category": None,
-        }
-    
-    # Check for price queries
-    price_keywords = ['price', 'cost', 'how much', 'price of', 'cost of']
-    if any(keyword in message_lower for keyword in price_keywords):
-        category = None
-        product_name = None
-        
-        # Detect category
-        if 'pizza' in message_lower:
-            category = 'pizza'
-        elif 'burger' in message_lower:
-            category = 'burger'
-        elif 'drink' in message_lower:
-            category = 'drink'
-        
-        # Try to extract product name after price keywords
-        for keyword in price_keywords:
-            if keyword in message_lower:
-                parts = message_lower.split(keyword)
-                if len(parts) > 1:
-                    potential_product = parts[1].strip()
-                    # Clean up common words
-                    potential_product = re.sub(r'\b(of|for|the|a|an)\b', '', potential_product).strip()
-                    if potential_product:
-                        product_name = potential_product.title()
-                        break
-        
-        # Special case: if user just asks "pizza price" or "price of pizza"
-        if category == 'pizza' and (not product_name or product_name.lower() == 'pizza'):
-            product_name = 'pizza'
-        
-        return {
-            "intent": "price_query", 
-            "product_name": product_name, 
-            "product_names": None,
-            "category": category
-        }
-    
-    # Check if message contains pizza-related terms without price keywords
-    pizza_terms = ['pizza', 'pizzas']
-    if any(term in message_lower for term in pizza_terms):
-        # Check for info-seeking patterns first
-        info_patterns = ['about', 'what is', 'tell me', 'describe', 'info', 'what\'s in']
-        if any(pattern in message_lower for pattern in info_patterns):
-            # Extract pizza name for info request
-            specific_pizza_names = ['margherita', 'pepperoni', 'veggie', 'hawaiian', 'supreme', 'bbq', 'cheese']
-            for name in specific_pizza_names:
-                if name in message_lower:
-                    return {
-                        "intent": "product_info", 
-                        "product_name": f"{name} pizza", 
-                        "product_names": None,
-                        "category": "pizza"
-                    }
-            # General pizza info request
-            return {
-                "intent": "product_info", 
-                "product_name": "pizza", 
-                "product_names": None,
-                "category": "pizza"
-            }
-        
-        # If it's a general pizza inquiry, treat as pizza types request
-        specific_pizza_names = ['margherita', 'pepperoni', 'veggie', 'hawaiian', 'supreme', 'bbq']
-        is_specific = any(name in message_lower for name in specific_pizza_names)
-        
-        if is_specific:
-            # Extract the specific pizza name
-            for name in specific_pizza_names:
-                if name in message_lower:
-                    return {
-                        "intent": "price_query", 
-                        "product_name": f"{name} pizza", 
-                        "product_names": None,
-                        "category": "pizza"
-                    }
-        else:
-            return {
-                "intent": "pizza_types", 
-                "product_name": None, 
-                "product_names": None,
-                "category": "pizza"
-            }
-    
-    return {
-        "intent": "other", 
-        "product_name": None, 
-        "product_names": None,
-        "category": None
-    }
+        msg = resp.choices[0].message
+        if getattr(msg, "tool_calls", None):
+            # Execute each tool call and append its result
+            msgs.append({"role": "assistant", "tool_calls": [
+                {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments or "{}"}}
+                for tc in msg.tool_calls
+            ]})
+            for tc in msg.tool_calls:
+                try:
+                    name = tc.function.name
+                    args = json.loads(tc.function.arguments or "{}")
+                except Exception:
+                    name, args = "", {}
+                tool_result = _call_tool(name, args)
+                msgs.append({"role": "tool", "tool_call_id": tc.id, "content": tool_result})
+            continue
+        # No tool calls – return text
+        content = msg.content or ""
+        return content.strip() or "Got it."
+    return "Sorry, I'm having trouble processing your request right now."

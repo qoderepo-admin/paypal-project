@@ -1,0 +1,501 @@
+{
+  "ok": true,
+  "total_products": 33,
+  "data": [
+    {
+      "product_id": "PROD-8GU05831H8169193Y",
+      "name": "CLI Test Product 1757933327",
+      "description": "Created by CLI script",
+      "plans": [
+        {
+          "plan_id": "P-2MA56994PG928361BNDD66EY",
+          "status": "ACTIVE",
+          "price": "10.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-8VF92550H21611035",
+      "name": "Buffalo Wings (8 pc)",
+      "description": "Crispy wings tossed in buffalo sauce with blue cheese dip.",
+      "plans": [
+        {
+          "plan_id": "P-24101386DW449080VNDD7I6Q",
+          "status": "ACTIVE",
+          "price": "8.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-18Y03120EC800041B",
+      "name": "Mozzarella Sticks",
+      "description": "Golden fried mozzarella with marinara sauce.",
+      "plans": [
+        {
+          "plan_id": "P-4N0282448V133150LNDD7I6Y",
+          "status": "ACTIVE",
+          "price": "7.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-7GB670465A4071848",
+      "name": "Loaded Nachos Supreme",
+      "description": "Tortilla chips with cheddar, jalape\u00f1os, salsa, and sour cream.",
+      "plans": [
+        {
+          "plan_id": "P-1NL44011T6393651PNDD7I7A",
+          "status": "ACTIVE",
+          "price": "10.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-20510250P4587294T",
+      "name": "Classic Caesar Salad",
+      "description": "Romaine, parmesan, and croutons with Caesar dressing.",
+      "plans": [
+        {
+          "plan_id": "P-0TE002877G235345SNDD7I7I",
+          "status": "ACTIVE",
+          "price": "7.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-1GB85727CN141641X",
+      "name": "Classic Cheeseburger",
+      "description": "Beef patty, cheddar, lettuce, tomato, pickle, and house sauce.",
+      "plans": [
+        {
+          "plan_id": "P-23K29548DX6915836NDD7I7I",
+          "status": "ACTIVE",
+          "price": "11.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-9DL60864TS120164P",
+      "name": "Bacon BBQ Burger",
+      "description": "Smoky bacon, cheddar, BBQ sauce, and crispy onions.",
+      "plans": [
+        {
+          "plan_id": "P-2UY4991691134940GNDD7I7Y",
+          "status": "ACTIVE",
+          "price": "13.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-6FH0897445873792H",
+      "name": "Mushroom Swiss Burger",
+      "description": "Saut\u00e9ed mushrooms, Swiss cheese, and garlic aioli.",
+      "plans": [
+        {
+          "plan_id": "P-5JF56774J6309304RNDD7JAA",
+          "status": "ACTIVE",
+          "price": "12.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-4YH62728JW708014D",
+      "name": "Veggie Black Bean Burger",
+      "description": "Grilled black bean patty with avocado and chipotle mayo.",
+      "plans": [
+        {
+          "plan_id": "P-9RH82517J3248800KNDD7JAI",
+          "status": "ACTIVE",
+          "price": "11.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-57B899232M1426441",
+      "name": "Double Stack Burger",
+      "description": "Two beef patties, American cheese, and special sauce.",
+      "plans": [
+        {
+          "plan_id": "P-9BM46665DE140540TNDD7JAQ",
+          "status": "ACTIVE",
+          "price": "14.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-96K64192CB0170036",
+      "name": "Philly Cheesesteak",
+      "description": "Shaved steak, peppers, onions, and provolone on a hoagie.",
+      "plans": [
+        {
+          "plan_id": "P-7BJ41933WJ149522DNDD7JAQ",
+          "status": "ACTIVE",
+          "price": "12.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-7K658915XK233230R",
+      "name": "Grilled Chicken Sandwich",
+      "description": "Marinated chicken breast with lettuce, tomato, and mayo.",
+      "plans": [
+        {
+          "plan_id": "P-6F290243GV503380NNDD7JAY",
+          "status": "ACTIVE",
+          "price": "11.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-3KW88811EG383794N",
+      "name": "BLT Sandwich",
+      "description": "Bacon, lettuce, tomato, and mayo on toasted bread.",
+      "plans": [
+        {
+          "plan_id": "P-2TW2604776452383GNDD7JBA",
+          "status": "ACTIVE",
+          "price": "10.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-7SC17903J4480100T",
+      "name": "Pulled Pork Sandwich",
+      "description": "Slow-cooked BBQ pork with coleslaw on a brioche bun.",
+      "plans": [
+        {
+          "plan_id": "P-67F78618LW391510FNDD7JBI",
+          "status": "ACTIVE",
+          "price": "12.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-4BC41991JX350372A",
+      "name": "Classic Beef Burrito",
+      "description": "Seasoned ground beef, rice, beans, cheddar, and pico de gallo wrapped in a warm tortilla.",
+      "plans": [
+        {
+          "plan_id": "P-58G08017R9081124XNDD7JBQ",
+          "status": "ACTIVE",
+          "price": "10.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-58D972932P867502R",
+      "name": "Veggie Burrito",
+      "description": "Grilled peppers and onions, rice, black beans, corn, guacamole, and salsa fresca.",
+      "plans": [
+        {
+          "plan_id": "P-2JJ45814E3280122LNDD7JCA",
+          "status": "ACTIVE",
+          "price": "9.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-7HF62004X6295553A",
+      "name": "Grilled Chicken Burrito",
+      "description": "Grilled chicken, cilantro-lime rice, black beans, cheese, and salsa.",
+      "plans": [
+        {
+          "plan_id": "P-87858997PD297833HNDD7JBY",
+          "status": "ACTIVE",
+          "price": "10.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-7XL17367PF1509938",
+      "name": "California Burrito",
+      "description": "Carne asada, french fries, cheddar, guacamole, and sour cream.",
+      "plans": [
+        {
+          "plan_id": "P-3D641358EJ3275840NDD7JCI",
+          "status": "ACTIVE",
+          "price": "12.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-11D49202XA5173512",
+      "name": "Breakfast Burrito",
+      "description": "Scrambled eggs, bacon, potatoes, cheddar, and salsa roja.",
+      "plans": [
+        {
+          "plan_id": "P-2FX04599WW8657935NDD7JCQ",
+          "status": "ACTIVE",
+          "price": "9.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-1TW166098J2072034",
+      "name": "Margherita Personal Pizza",
+      "description": "Tomato, fresh mozzarella, and basil.",
+      "plans": [
+        {
+          "plan_id": "P-95537026T3129440BNDD7JCY",
+          "status": "ACTIVE",
+          "price": "11.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-2A497039SK331392H",
+      "name": "Pepperoni Personal Pizza",
+      "description": "Tomato sauce, mozzarella, and pepperoni.",
+      "plans": [
+        {
+          "plan_id": "P-34R426641D1436901NDD7JDI",
+          "status": "ACTIVE",
+          "price": "12.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-8GR157713W4127716",
+      "name": "BBQ Chicken Personal Pizza",
+      "description": "BBQ sauce, chicken, red onion, and cilantro.",
+      "plans": [
+        {
+          "plan_id": "P-762331268A025244KNDD7JDQ",
+          "status": "ACTIVE",
+          "price": "13.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-84V00385XU517152C",
+      "name": "French Fries",
+      "description": "Crispy shoestring fries with sea salt.",
+      "plans": [
+        {
+          "plan_id": "P-2E269972XU8410409NDD7JDY",
+          "status": "ACTIVE",
+          "price": "3.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-3UB420433G993922N",
+      "name": "Sweet Potato Fries",
+      "description": "Seasoned sweet potato fries with chipotle dip.",
+      "plans": [
+        {
+          "plan_id": "P-4XJ36673J66259509NDD7JEA",
+          "status": "ACTIVE",
+          "price": "4.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-2AV788544G780112E",
+      "name": "Onion Rings",
+      "description": "Beer-battered rings with ranch dip.",
+      "plans": [
+        {
+          "plan_id": "P-4EG24048W4524100RNDD7JEI",
+          "status": "ACTIVE",
+          "price": "4.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-2PT41256DR212680S",
+      "name": "Coleslaw",
+      "description": "Creamy cabbage slaw.",
+      "plans": [
+        {
+          "plan_id": "P-0F9273623K968331ANDD7JEQ",
+          "status": "ACTIVE",
+          "price": "3.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-3A425316WJ180951M",
+      "name": "Warm Apple Pie",
+      "description": "Classic spiced apple filling with flaky crust.",
+      "plans": [
+        {
+          "plan_id": "P-9FD03816G0799124GNDD7JEY",
+          "status": "ACTIVE",
+          "price": "5.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-14L27789UC0087403",
+      "name": "Chocolate Brownie Sundae",
+      "description": "Warm brownie with vanilla ice cream and chocolate sauce.",
+      "plans": [
+        {
+          "plan_id": "P-06F537415W8038406NDD7JFA",
+          "status": "ACTIVE",
+          "price": "6.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-1FG36240A7064800X",
+      "name": "New York Cheesecake",
+      "description": "Rich and creamy classic cheesecake.",
+      "plans": [
+        {
+          "plan_id": "P-8GB5426533928771SNDD7JFI",
+          "status": "ACTIVE",
+          "price": "6.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-86W51201J6727101P",
+      "name": "Fountain Soda",
+      "description": "Assorted flavors.",
+      "plans": [
+        {
+          "plan_id": "P-12G89313MN688764UNDD7JFQ",
+          "status": "ACTIVE",
+          "price": "2.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-8HR83983DX038042N",
+      "name": "Fresh Lemonade",
+      "description": "House-made lemonade.",
+      "plans": [
+        {
+          "plan_id": "P-6RY075038A2958804NDD7JGA",
+          "status": "ACTIVE",
+          "price": "3.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-93E979148J1269942",
+      "name": "Iced Tea",
+      "description": "Freshly brewed.",
+      "plans": [
+        {
+          "plan_id": "P-662879309B251803PNDD7JFY",
+          "status": "ACTIVE",
+          "price": "2.99",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    },
+    {
+      "product_id": "PROD-8BG42082YG419003M",
+      "name": "Vanilla Milkshake",
+      "description": "Hand-spun vanilla milkshake.",
+      "plans": [
+        {
+          "plan_id": "P-9WN03543FC833950PNDD7JGI",
+          "status": "ACTIVE",
+          "price": "5.49",
+          "currency": "USD",
+          "interval_unit": "MONTH",
+          "interval_count": 1
+        }
+      ]
+    }
+  ]
+}
